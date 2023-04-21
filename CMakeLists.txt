@@ -8,6 +8,8 @@ project(
   LANGUAGES CXX
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(mcarve-pass1
