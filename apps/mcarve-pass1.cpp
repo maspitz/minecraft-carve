@@ -1,12 +1,12 @@
-#include <string>
-#include <iostream>
-#include <ctime>
-#include <stdexcept>
-#include <cstdint>  // for types uint32_t etc.
 #include <array>
-#include <vector>
-#include <memory>
+#include <cstdint> // for types uint32_t etc.
+#include <ctime>
+#include <iostream>
 #include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "pass1config.hpp"
 
@@ -17,7 +17,7 @@ const uint64_t BLOCK_SIZE = 4096;
 constexpr auto FIELD_SIZE = sizeof(uint32_t);
 constexpr auto FIELDS_PER_BLOCK = BLOCK_SIZE / FIELD_SIZE;
 
-bool is_sparse_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
+bool is_sparse_block(array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
     int count_nonzero{0};
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
         count_nonzero += (buffer[i] != 0);
@@ -25,7 +25,8 @@ bool is_sparse_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
     return count_nonzero < 10;
 }
 
-bool is_timestamp_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer, uint32_t min_time, uint32_t max_time) {
+bool is_timestamp_block(array<uint32_t, FIELDS_PER_BLOCK> &buffer,
+                        uint32_t min_time, uint32_t max_time) {
     bool is_timestamp = false;
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
         uint32_t timestamp = __builtin_bswap32(buffer[i]);
@@ -40,7 +41,7 @@ bool is_timestamp_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer, uint32_t min_
     return is_timestamp;
 }
 
-bool is_offset_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
+bool is_offset_block(array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
     bool is_offset = false;
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
         uint8_t upper_byte = static_cast<uint8_t>((buffer[i] >> 24) & 0xFF);
@@ -59,7 +60,6 @@ bool is_offset_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
     }
 
     uint32_t calculated_offset{2};
-
 
     if (chunk_length.size() < 3) {
         return false;
@@ -82,24 +82,25 @@ int main(int argc, char *argv[]) {
     unique_ptr<Pass1Config> conf_ptr;
     try {
         conf_ptr = make_unique<Pass1Config>(argc, argv);
-    }
-    catch (exception& e) {
+    } catch (exception &e) {
         cerr << argv[0] << ": " << e.what() << "\n";
         return 1;
     }
 
-    Pass1Config& conf = *conf_ptr;
+    Pass1Config &conf = *conf_ptr;
     ifstream &infile = conf.in_stream();
 
     infile.seekg(0, ios::end);
     uint64_t file_size = infile.tellg();
     if (file_size % BLOCK_SIZE != 0) {
-        cerr << "Warning: image file size is not padded to align with block size." << endl;
+        cerr << "Warning: image file size is not padded to align with block "
+                "size."
+             << endl;
     }
     infile.seekg(0, ios::beg);
 
     if (conf.verbose()) {
-    	cout << "Start Timestamp: " << conf.start_time() << "\n"
+        cout << "Start Timestamp: " << conf.start_time() << "\n"
              << "Stop Timestamp:  " << conf.stop_time() << "\n"
              << "Opened image file " << conf.file_name() << "\n"
              << "Contains " << file_size / 4096 << " blocks" << endl;
@@ -114,7 +115,7 @@ int main(int argc, char *argv[]) {
 
     for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE) {
         infile.seekg(offset, ios::beg);
-        infile.read(reinterpret_cast<char*>(buffer.data()), BUFFER_SIZE);
+        infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
         if (is_sparse_block(buffer)) {
             continue;
         }
@@ -128,15 +129,15 @@ int main(int argc, char *argv[]) {
 
     cout << "Found " << timestamp_offsets.size()
          << " candidate timestamp blocks at offsets:\n\t";
-    for(auto offset: timestamp_offsets) {
-         cout << offset << " ";
+    for (auto offset : timestamp_offsets) {
+        cout << offset << " ";
     }
     cout << "\n";
 
     cout << "Found " << offset_offsets.size()
          << " candidate offset blocks at offsets:\n\t";
-    for(auto offset: offset_offsets) {
-         cout << offset << " ";
+    for (auto offset : offset_offsets) {
+        cout << offset << " ";
     }
     cout << "\n";
 
