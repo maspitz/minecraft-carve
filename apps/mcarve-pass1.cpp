@@ -40,7 +40,42 @@ bool is_timestamp_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer, uint32_t min_
     return is_timestamp;
 }
 
+bool is_offset_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
+    bool is_offset = false;
+    for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
+        uint8_t upper_byte = static_cast<uint8_t>((buffer[i] >> 24) & 0xFF);
+        if (upper_byte & 0xFE) {
+            return false;
+        }
+    }
+    map<int32_t, uint8_t> chunk_length;
+    for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
+        uint32_t x = __builtin_bswap32(buffer[i]);
+        uint32_t offset = x >> 8 & 0xFFFFFF;
+        uint32_t length = x & 0xFF;
+        if (length > 0) {
+            chunk_length[offset] = length;
+        }
+    }
 
+    uint32_t calculated_offset{2};
+
+
+    if (chunk_length.size() < 3) {
+        return false;
+    }
+    cerr << "chunk_length.size() = " << chunk_length.size() << endl;
+    for (auto i : chunk_length) {
+        uint32_t offset(i.first);
+        uint8_t length(i.second);
+        if (offset != calculated_offset) {
+            return false;
+        }
+        calculated_offset += length;
+    }
+    cerr << chunk_length.size() << " ";
+    return true;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -86,10 +121,21 @@ int main(int argc, char *argv[]) {
         if (is_timestamp_block(buffer, conf.start_time(), conf.stop_time())) {
             timestamp_offsets.push_back(offset);
         }
+        if (is_offset_block(buffer)) {
+            offset_offsets.push_back(offset);
+        }
     }
+
     cout << "Found " << timestamp_offsets.size()
          << " candidate timestamp blocks at offsets:\n\t";
     for(auto offset: timestamp_offsets) {
+         cout << offset << " ";
+    }
+    cout << "\n";
+
+    cout << "Found " << offset_offsets.size()
+         << " candidate offset blocks at offsets:\n\t";
+    for(auto offset: offset_offsets) {
          cout << offset << " ";
     }
     cout << "\n";
