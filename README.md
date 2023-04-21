@@ -2,12 +2,14 @@
 Extract minecraft files from filesystem images
 
 ## Design Scope
-The purpose of this project is to recovered deleted (that is, unlinked) minecraft saved game data.  The filesystem in question is an ext4 filesystem.  My initial goal is to recover the .mca and .mcr files, which are in the Anvil and Region file formats respectively.  These make up the bulk of the saved game data.  I hope to recover the content of the files, to verify their integrity, and to deduce their proper filenames.
+The purpose of this project is to recovered deleted (that is, unlinked) minecraft saved game data.  My personal interest is in an ext4 filesystem.  My initial goal is to recover the .mca and .mcr files, which are in the Anvil and Region file formats respectively.  These make up the bulk of the saved game data.  I hope to recover the content of the files, to verify their integrity, and to deduce their proper filenames.
 
 ## Design Limitations
 
 ### Filesystem structure and block size
-The only assumption for the filesystem structure is that file data is stored in 4096-byte aligned blocks.  Therefore this tool may also be useful in scenarios involving filesystems other than ext2/3/4.  But whatever the filesystem, this file carving does not attempt to cope with file data that stored in fragmented blocks that are smaller than 4096 bytes.  For convenience, the tool may optionally use libext2fs to read the ext2/3/4 block bitmaps and ignore data blocks that are currently in use.
+The basic assumption for the filesystem structure is that file data is stored in 4096-byte aligned blocks.  Therefore this tool may also be useful in scenarios involving filesystems other than ext2/3/4.  But whatever the filesystem, this file carving does not attempt to cope with file data that stored in fragmented blocks that are smaller than 4096 bytes.  For convenience, the tool may optionally use libext2fs to read the ext2/3/4 block bitmaps and ignore data blocks that are currently in use.
+
+Note: If we were to adapt this tool for use with a filesystem image having (for example) 1024-byte blocks, then the main requirement would be to alter the scanning to cope with files aligned at 1 KiB boundaries.
 
 ### File metadata
 This tool will not attempt to recover file metadata from the filesystem.  Information about the files will have to come from their contents only.
@@ -59,11 +61,14 @@ Since the region files contains at most 2^10 chunks, and each chunk has a maximu
 
 Furthermore, the upper byte of the chunk offsets will only be nonzero for Anvil files that are greater than 4 KiB * 2^16 = 256 MiB in size.  If we assume that our Anvil files are less than 512 MiB, we can scan simply by requiring that this upper byte is zero or one.
 
-Once we have a candidate block, we can sort the chunks (offset, length) by offsets and require the lengths to equal the difference between successive offsets.
+Once we have a candidate block, we can sort the chunks (offset, length) by offsets and require the lengths to be no greater than the difference between successive offsets.  It is not unusual that the length
+is less than the difference between offsets.  In such cases, the region file may contain leftover, unused pieces of chunk data.
 
 We may want an additional round of rejection for extremely sparse files, for example, an apparently legitimate offset block that describes only a single chunk.
 
 Finally, we should record a bitmap of chunks that are present in the file.  This constitutes a 128-byte fingerprint of the anvil file which can be used for reuniting file fragments.
+
+Note that this fingerprint is not useful for highly populated regions, in which all chunks are present.  Furthermore, these regions are quite common in actual practice.  Fortunately, region file fragmentation occurring within the header is probably rare.
 
 #### Recognizing chunk timestamps
 We will simply require each uint32_t to fall within a start_time and stop_time range.  The defaults can be Jan-1-2009 and the present date (in the unix epoch).
@@ -81,7 +86,7 @@ Finally, we can attempt to decompress the data segment starting with the sixth b
 Recognizing other chunk data may be rather challenging in the case of fragmentation.  We can attempt to continue decompressing blocks after the first block, up to the number of blocks corresponding to the length of the data segment indicated, and mark those blocks where it was successful.  In practice, many chunks will consist of only one block.  We can also try to match incomplete chunk data with unallocated blocks, which will have N*M possible matchups.  If we have 2 GiB of free space on the filesystem, then that leaves 500k potential blocks.  Matching them with 1k incomplete chunk data would require 500M potential matchups, which may be practical but expensive to try.
 
 ### Pass 2:
-Match up blocks to construct chains of blocks.  Ideally, chains will form complete anvil files.
+Match up blocks to construct chains of blocks.  Ideally, chains will form complete anvil files.  It is reasonable to expect that a fragmented anvil file can be usually reconstructed from two or three chains, assuming that unlinked file data has not been reallocated and overwritten.
 
 #### Method
 We read back the type and location of the candidate blocks recorded from Pass 1.  Timestamps and offsets should be matched one-to-one.
