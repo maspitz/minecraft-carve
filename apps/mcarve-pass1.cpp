@@ -17,6 +17,14 @@ const uint64_t BLOCK_SIZE = 4096;
 constexpr auto FIELD_SIZE = sizeof(uint32_t);
 constexpr auto FIELDS_PER_BLOCK = BLOCK_SIZE / FIELD_SIZE;
 
+bool is_sparse_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer) {
+    int count_nonzero{0};
+    for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
+        count_nonzero += (buffer[i] != 0);
+    }
+    return count_nonzero < 10;
+}
+
 bool is_timestamp_block(array<uint32_t, FIELDS_PER_BLOCK>& buffer, uint32_t min_time, uint32_t max_time) {
     bool is_timestamp = false;
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
