@@ -42,6 +42,39 @@ bool is_timestamp_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer,
     return is_timestamp;
 }
 
+bool is_chunk_header(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
+    uint32_t data_length = __builtin_bswap32(buffer[0]);
+    // Require the chunk data length to be less than 1 MiB.
+    if (data_length > (1 << 20)) {
+        return false;
+    }
+    uint32_t x = __builtin_bswap32(buffer[1]);
+    uint8_t compression_type = static_cast<uint8_t>((x >> 24) & 0xFF);
+    if (compression_type != 2) {
+        return false;
+    }
+    uint8_t cmf = static_cast<uint8_t>((x >> 16) & 0xFF);
+    uint8_t flg = static_cast<uint8_t>((x >> 8) & 0xFF);
+    // CMF value: 0x78
+    // Compression method - DEFLATE (0x08)
+    // Compression info - 32k window size (0x70)
+    if (cmf != 0x78) {
+        return false;
+    }
+    // FLG value: 0x9c
+    // FLEVEL compression level 2 (0x80) [compressor used default algorithm]
+    // FDICT preset dictionary (0x00) [DICT identifier not present after FLG]
+    // FCHECK - 5 checksum bits (0x1c) so that CMF*256 + FLG is divisible by 31.
+    if (flg != 0x9c) {
+        return false;
+    }
+
+    // TODO: attempt decompression and recognition of chunk NBT data
+    return true;
+}
+
+enum class Block { Offset, Timestamp, Chunk };
+
 using bin1024 = bitset<1024>;
 using bin64 = bitset<64>;
 
@@ -58,8 +91,6 @@ block_fingerprint(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
 }
 
 bool is_offset_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
-    bool is_offset = false;
-
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
         uint32_t x = __builtin_bswap32(buffer[i]);
         uint8_t upper_byte = static_cast<uint8_t>((x >> 24) & 0xFF);
@@ -129,8 +160,10 @@ int main(int argc, char *argv[]) {
 
     array<uint32_t, FIELDS_PER_BLOCK> buffer;
 
+    map<uint64_t, Block> blocks;
     vector<uint64_t> timestamp_offsets;
     vector<uint64_t> offset_offsets;
+    vector<uint64_t> chunk_offsets;
 
     const size_t BUFFER_SIZE = buffer.size() * sizeof(uint32_t);
 
@@ -140,7 +173,8 @@ int main(int argc, char *argv[]) {
     // FIXME: kludge for the test filesystem which has 1024-byte filesystem
     // blocks. The extent boundaries in this test filesystem are almost all
     // aligned by 1024 + 4096 * N.
-    for (uint64_t offset = 1024; offset < file_size; offset += BUFFER_SIZE) {
+    for (uint64_t offset = 1024; infile && offset < file_size;
+         offset += BUFFER_SIZE) {
         // for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
         // {
 
@@ -149,32 +183,30 @@ int main(int argc, char *argv[]) {
         if (is_sparse_block(buffer)) {
             continue;
         }
-        if (is_timestamp_block(buffer, conf.start_time(), conf.stop_time())) {
-            timestamp_offsets.push_back(offset);
-        }
         if (is_offset_block(buffer)) {
-            offset_offsets.push_back(offset);
-        }
-        if (!infile) {
-            break;
+            blocks[offset] = Block::Offset;
+        } else if (is_timestamp_block(buffer, conf.start_time(),
+                                      conf.stop_time())) {
+            blocks[offset] = Block::Timestamp;
+        } else if (is_chunk_header(buffer)) {
+            blocks[offset] = Block::Chunk;
         }
     }
+
+    map<Block, std::string> block_char{
+        {Block::Offset, "O"}, {Block::Timestamp, "T"}, {Block::Chunk, "c"}};
+    uint64_t prev_loc = 0;
+    for (auto b : blocks) {
+        uint64_t loc = b.first;
+        if (loc != prev_loc + BUFFER_SIZE) {
+            cout << "\n" << loc << ":\t";
+        }
+        cout << block_char[b.second];
+        prev_loc = loc;
+    }
+    cout << endl;
 
     /*
-    cout << "Found " << timestamp_offsets.size()
-         << " candidate timestamp blocks at offsets:\n\t";
-    for (auto offset : timestamp_offsets) {
-        cout << offset << " ";
-    }
-    cout << "\n";
-
-    cout << "Found " << offset_offsets.size()
-         << " candidate offset blocks at offsets:\n\t";
-    for (auto offset : offset_offsets) {
-        cout << offset << " ";
-    }
-    cout << "\n";
-*/
     multimap<unsigned long long, pair<string, uint64_t>> fprint;
     infile.clear();
     infile.seekg(0, ios::beg);
@@ -188,26 +220,22 @@ int main(int argc, char *argv[]) {
         fprint.insert(make_pair(block_fingerprint(buffer),
                                 make_pair("offset   ", offset)));
     }
+
     infile.clear();
     infile.seekg(0, ios::beg);
-
     for (auto offset : timestamp_offsets) {
-        if (!infile) {
-            cerr << "!!!" << endl;
-            break;
-        }
         infile.seekg(offset, ios::beg);
         infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
         fprint.insert(make_pair(block_fingerprint(buffer),
                                 make_pair("timestamp", offset)));
     }
-
     for (auto fp : fprint) {
 
         cout << std::hex << fp.first << "\t" << std::dec << fp.second.second
              << "\t" << fp.second.first << "\n";
     }
     cout << endl;
+*/
 
     return 0;
 }
