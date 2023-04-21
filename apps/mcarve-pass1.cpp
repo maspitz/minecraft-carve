@@ -1,6 +1,5 @@
 #include <array>
 #include <cstdint> // for types uint32_t etc.
-#include <ctime>
 #include <iostream>
 #include <map>
 #include <memory>
