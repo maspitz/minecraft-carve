@@ -1,5 +1,7 @@
 #include <array>
+#include <bitset>
 #include <cstdint> // for types uint32_t etc.
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -40,19 +42,37 @@ bool is_timestamp_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer,
     return is_timestamp;
 }
 
+using bin1024 = bitset<1024>;
+using bin64 = bitset<64>;
+
+unsigned long long
+block_fingerprint(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
+    bin1024 population;
+    hash<bin1024> hash_fn;
+    for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
+
+        population[i] = (buffer[i] != 0);
+    }
+    bin64 x = hash_fn(population);
+    return x.to_ullong();
+}
+
 bool is_offset_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
     bool is_offset = false;
+
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
-        uint8_t upper_byte = static_cast<uint8_t>((buffer[i] >> 24) & 0xFF);
+        uint32_t x = __builtin_bswap32(buffer[i]);
+        uint8_t upper_byte = static_cast<uint8_t>((x >> 24) & 0xFF);
         if (upper_byte & 0xFE) {
             return false;
         }
     }
+
     map<int32_t, uint8_t> chunk_length;
     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
         uint32_t x = __builtin_bswap32(buffer[i]);
         uint32_t offset = x >> 8 & 0xFFFFFF;
-        uint32_t length = x & 0xFF;
+        uint8_t length = static_cast<uint8_t>(x & 0xFF);
         if (length > 0) {
             chunk_length[offset] = length;
         }
@@ -63,16 +83,18 @@ bool is_offset_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
     if (chunk_length.size() < 3) {
         return false;
     }
-    cerr << "chunk_length.size() = " << chunk_length.size() << endl;
+    int trials = 0;
     for (auto i : chunk_length) {
+        trials++;
         uint32_t offset(i.first);
-        uint8_t length(i.second);
-        if (offset != calculated_offset) {
+        auto length = i.second;
+        if (offset < calculated_offset) {
+            cerr << "Failed at " << trials << " out of " << chunk_length.size()
+                 << endl;
             return false;
         }
         calculated_offset += length;
     }
-    cerr << chunk_length.size() << " ";
     return true;
 }
 
@@ -112,7 +134,16 @@ int main(int argc, char *argv[]) {
 
     const size_t BUFFER_SIZE = buffer.size() * sizeof(uint32_t);
 
-    for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE) {
+    if (!infile) {
+        cerr << "infile-1" << endl;
+    }
+    // FIXME: kludge for the test filesystem which has 1024-byte filesystem
+    // blocks. The extent boundaries in this test filesystem are almost all
+    // aligned by 1024 + 4096 * N.
+    for (uint64_t offset = 1024; offset < file_size; offset += BUFFER_SIZE) {
+        // for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
+        // {
+
         infile.seekg(offset, ios::beg);
         infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
         if (is_sparse_block(buffer)) {
@@ -124,8 +155,12 @@ int main(int argc, char *argv[]) {
         if (is_offset_block(buffer)) {
             offset_offsets.push_back(offset);
         }
+        if (!infile) {
+            break;
+        }
     }
 
+    /*
     cout << "Found " << timestamp_offsets.size()
          << " candidate timestamp blocks at offsets:\n\t";
     for (auto offset : timestamp_offsets) {
@@ -139,6 +174,40 @@ int main(int argc, char *argv[]) {
         cout << offset << " ";
     }
     cout << "\n";
+*/
+    multimap<unsigned long long, pair<string, uint64_t>> fprint;
+    infile.clear();
+    infile.seekg(0, ios::beg);
+    for (auto offset : offset_offsets) {
+        if (!infile) {
+            cerr << "!!" << endl;
+            break;
+        }
+        infile.seekg(offset, ios::beg);
+        infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
+        fprint.insert(make_pair(block_fingerprint(buffer),
+                                make_pair("offset   ", offset)));
+    }
+    infile.clear();
+    infile.seekg(0, ios::beg);
+
+    for (auto offset : timestamp_offsets) {
+        if (!infile) {
+            cerr << "!!!" << endl;
+            break;
+        }
+        infile.seekg(offset, ios::beg);
+        infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
+        fprint.insert(make_pair(block_fingerprint(buffer),
+                                make_pair("timestamp", offset)));
+    }
+
+    for (auto fp : fprint) {
+
+        cout << std::hex << fp.first << "\t" << std::dec << fp.second.second
+             << "\t" << fp.second.first << "\n";
+    }
+    cout << endl;
 
     return 0;
 }
