@@ -3,12 +3,16 @@
 #include <cstdint> // for types uint32_t etc.
 #include <functional>
 #include <iostream>
-#include <map>
+#include <fstream>
+#include <sstream>
 #include <memory>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "zstr.hpp"
+#include "nbt.hpp"
 #include "pass1config.hpp"
 
 using namespace std;
@@ -173,10 +177,10 @@ int main(int argc, char *argv[]) {
     // FIXME: kludge for the test filesystem which has 1024-byte filesystem
     // blocks. The extent boundaries in this test filesystem are almost all
     // aligned by 1024 + 4096 * N.
-    for (uint64_t offset = 1024; infile && offset < file_size;
-         offset += BUFFER_SIZE) {
-        // for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
-        // {
+    //for (uint64_t offset = 1024; infile && offset < file_size;
+         //offset += BUFFER_SIZE) {
+         for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
+         {
 
         infile.seekg(offset, ios::beg);
         infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
@@ -206,7 +210,87 @@ int main(int argc, char *argv[]) {
     }
     cout << endl;
 
-    /*
+    infile.clear();
+    infile.seekg(0, ios::beg);
+    for (auto b : blocks) {
+        if (b.second != Block::Chunk) {
+            continue;
+        }
+        uint64_t loc = b.first;
+        infile.seekg(loc, ios::beg);
+        cerr << "Preparing to read chunk data from offset " << loc << endl;
+        uint32_t data_length;
+        infile.read(reinterpret_cast<char *>(&data_length), 4);
+        data_length = __builtin_bswap32(data_length);
+        cerr << "Data length: " << hex << data_length << endl;
+        uint8_t compression_type;
+        infile.read(reinterpret_cast<char *>(&compression_type), 1);
+        cerr << "Compression type: " << dec << int(compression_type) << endl;
+        if (compression_type != 2) {
+            cerr << "Compression type is not zlib.  Exiting...";
+            break;
+        }
+        // TODO use std::array instead of char[]
+        auto zbuffer = std::make_unique<char[]>(data_length);
+        infile.read(zbuffer.get(), data_length);
+        cerr << "Got: " << hex;
+        for(int i = 0; i < 5; ++i) {
+            cerr << (unsigned int)(zbuffer[i] & 0xff) << " ";
+        }
+        cerr << dec << endl;
+
+        // Create a std::basic_stringbuf object and set its content to the buffer
+        std::basic_stringbuf<char> input_buffer;
+        input_buffer.sputn(zbuffer.get(), infile.gcount());
+
+        // Create a std::istringstream from the stringbuf
+        std::basic_istream<char> input_stream(&input_buffer);
+
+        zstr::istream zinput_stream(input_stream);
+
+        // Pass the input stream to another function
+        nbt::NBT tags;
+        tags.decode(zinput_stream);
+        std::cout << tags << std::endl;
+
+//         std::istringstream zbuffer_stream(std::string(zbuffer.get(), data_length));
+// cerr << "!" << endl;
+//         nbt::NBT tags{zbuffer_stream};
+//         cerr << "!!" << endl;
+//         std::cout << tags << std::endl;
+
+
+
+        break;
+    }
+
+/*
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.avail_in = 0;
+        stream.next_in = Z_NULL;
+        int ret = inflateInit(&stream);
+        if (ret != Z_OK) {
+            std::cerr << "Failed to initialize zlib: " << ret << std::endl;
+            return 1;
+        }
+        while(true) {
+            stream.avail_in = infile.gcount(); // bytes read by the last infile.read()
+            stream.next_in = reinterpret_cast<Bytef*>(zbuffer.get());
+            ret = inflate(&stream, Z_NO_FLUSH);
+            if (ret == Z_STREAM_ERROR) {
+                std::cerr << "Failed to decompress data: " << ret << std::endl;
+                inflateEnd(&stream);
+                return 1;
+            }
+            stream.avail_out
+        }
+
+*/
+
+        /*
     multimap<unsigned long long, pair<string, uint64_t>> fprint;
     infile.clear();
     infile.seekg(0, ios::beg);
