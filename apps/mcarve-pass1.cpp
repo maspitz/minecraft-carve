@@ -193,132 +193,141 @@ int main(int argc, char *argv[]) {
                                       conf.stop_time())) {
             blocks[offset] = Block::Timestamp;
         } else if (is_chunk_header(buffer)) {
-            blocks[offset] = Block::Chunk;
+            blocks[offset] = Block::ChunkStart;
         }
     }
-
-    map<Block, std::string> block_char{
-        {Block::Offset, "O"}, {Block::Timestamp, "T"}, {Block::Chunk, "c"}};
-    uint64_t prev_loc = 0;
-    for (auto b : blocks) {
-        uint64_t loc = b.first;
-        if (loc != prev_loc + BUFFER_SIZE) {
-            cout << "\n" << loc << ":\t";
-        }
-        cout << block_char[b.second];
-        prev_loc = loc;
-    }
-    cout << endl;
 
     infile.clear();
     infile.seekg(0, ios::beg);
+    int chunks_read = 0;
+
+    const long MAX_CHUNK_SIZE = (1 << 20);
+    std::array<char, MAX_CHUNK_SIZE> zzbuffer;
+    // auto zzbuffer = std::make_unique<char[]>(1 << 20);
+
     for (auto b : blocks) {
-        if (b.second != Block::Chunk) {
+        if (b.second != Block::ChunkStart) {
             continue;
         }
         uint64_t loc = b.first;
         infile.seekg(loc, ios::beg);
-        cerr << "Preparing to read chunk data from offset " << loc << endl;
         uint32_t data_length;
         infile.read(reinterpret_cast<char *>(&data_length), 4);
         data_length = __builtin_bswap32(data_length);
-        cerr << "Data length: " << hex << data_length << endl;
+        if (data_length > 1 << 20) {
+            cerr << "At loc " << loc << ", Data length " << data_length
+                 << " greater than " << (1 << 20) << ".  Exiting...";
+            break;
+        }
+
         uint8_t compression_type;
         infile.read(reinterpret_cast<char *>(&compression_type), 1);
-        cerr << "Compression type: " << dec << int(compression_type) << endl;
         if (compression_type != 2) {
             cerr << "Compression type is not zlib.  Exiting...";
             break;
         }
-        // TODO use std::array instead of char[]
-        auto zbuffer = std::make_unique<char[]>(data_length);
-        infile.read(zbuffer.get(), data_length);
-        cerr << "Got: " << hex;
-        for(int i = 0; i < 5; ++i) {
-            cerr << (unsigned int)(zbuffer[i] & 0xff) << " ";
+        //        auto zbuffer = std::make_unique<char[]>(data_length);
+        // infile.read(zzbuffer.get(), data_length);
+        infile.read(reinterpret_cast<char *>(zzbuffer.data()), data_length);
+
+        // Create a std::basic_stringbuf object and set its content to the
+        // buffer
+
+        if (1 == 1) {
+            std::basic_stringbuf<char> input_buffer;
+            input_buffer.sputn(reinterpret_cast<char *>(zzbuffer.data()),
+                               infile.gcount());
+
+            // Create a std::istringstream from the stringbuf
+            std::basic_istream<char> input_stream(&input_buffer);
+
+            try {
+                zstr::istream zinput_stream(input_stream);
+
+                nbt::NBT tags;
+                tags.decode(zinput_stream);
+                if (chunks_read < 2) {
+                    std::cout << tags << std::endl;
+                }
+            } catch (zstr::Exception &ze) {
+                cerr << "zinput_stream: Exception at offset" << loc << ": "
+                     << ze.what() << endl;
+                continue;
+            }
+        } else {
+
+            std::istringstream input_stream(std::string(
+                reinterpret_cast<char *>(zzbuffer.data()), infile.gcount()));
+            try {
+                zstr::istream zinput_stream(input_stream);
+
+                // Pass the input stream to another function
+                nbt::NBT tags;
+                tags.decode(zinput_stream);
+                if (chunks_read < 2) {
+                    std::cout << tags << std::endl;
+                }
+            } catch (zstr::Exception &ze) {
+                cerr << "zinput_stream: Exception at offset" << loc << ": "
+                     << ze.what() << endl;
+                continue;
+            }
         }
-        cerr << dec << endl;
 
-        // Create a std::basic_stringbuf object and set its content to the buffer
-        std::basic_stringbuf<char> input_buffer;
-        input_buffer.sputn(zbuffer.get(), infile.gcount());
+        for (auto data_offset = loc + BLOCK_SIZE;
+             data_offset <= loc + data_length; data_offset += BLOCK_SIZE) {
+            blocks[data_offset] = Block::ChunkCont;
+        }
+        chunks_read++;
+    }
+    map<Block, std::string> block_char{{Block::Offset, "O"},
+                                       {Block::Timestamp, "T"},
+                                       {Block::ChunkStart, "c"},
+                                       {Block::ChunkCont, "d"}};
 
-        // Create a std::istringstream from the stringbuf
-        std::basic_istream<char> input_stream(&input_buffer);
+    if (conf.verbose()) {
 
-        zstr::istream zinput_stream(input_stream);
+        uint64_t prev_loc = 0;
+        for (auto b : blocks) {
+            uint64_t loc = b.first;
+            if (loc != prev_loc + BUFFER_SIZE) {
+                cout << "\n" << loc << ":\t";
+            }
+            cout << block_char[b.second];
+            prev_loc = loc;
+        }
+        cout << endl;
+    }
 
-        // Pass the input stream to another function
-        nbt::NBT tags;
-        tags.decode(zinput_stream);
-        std::cout << tags << std::endl;
-
-//         std::istringstream zbuffer_stream(std::string(zbuffer.get(), data_length));
-// cerr << "!" << endl;
-//         nbt::NBT tags{zbuffer_stream};
-//         cerr << "!!" << endl;
-//         std::cout << tags << std::endl;
-
-
-
+    /*
+multimap<unsigned long long, pair<string, uint64_t>> fprint;
+infile.clear();
+infile.seekg(0, ios::beg);
+for (auto offset : offset_offsets) {
+    if (!infile) {
+        cerr << "!!" << endl;
         break;
     }
+    infile.seekg(offset, ios::beg);
+    infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
+    fprint.insert(make_pair(block_fingerprint(buffer),
+                            make_pair("offset   ", offset)));
+}
 
-/*
-        z_stream stream;
-        stream.zalloc = Z_NULL;
-        stream.zfree = Z_NULL;
-        stream.opaque = Z_NULL;
-        stream.avail_in = 0;
-        stream.next_in = Z_NULL;
-        int ret = inflateInit(&stream);
-        if (ret != Z_OK) {
-            std::cerr << "Failed to initialize zlib: " << ret << std::endl;
-            return 1;
-        }
-        while(true) {
-            stream.avail_in = infile.gcount(); // bytes read by the last infile.read()
-            stream.next_in = reinterpret_cast<Bytef*>(zbuffer.get());
-            ret = inflate(&stream, Z_NO_FLUSH);
-            if (ret == Z_STREAM_ERROR) {
-                std::cerr << "Failed to decompress data: " << ret << std::endl;
-                inflateEnd(&stream);
-                return 1;
-            }
-            stream.avail_out
-        }
+infile.clear();
+infile.seekg(0, ios::beg);
+for (auto offset : timestamp_offsets) {
+    infile.seekg(offset, ios::beg);
+    infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
+    fprint.insert(make_pair(block_fingerprint(buffer),
+                            make_pair("timestamp", offset)));
+}
+for (auto fp : fprint) {
 
-*/
-
-        /*
-    multimap<unsigned long long, pair<string, uint64_t>> fprint;
-    infile.clear();
-    infile.seekg(0, ios::beg);
-    for (auto offset : offset_offsets) {
-        if (!infile) {
-            cerr << "!!" << endl;
-            break;
-        }
-        infile.seekg(offset, ios::beg);
-        infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
-        fprint.insert(make_pair(block_fingerprint(buffer),
-                                make_pair("offset   ", offset)));
-    }
-
-    infile.clear();
-    infile.seekg(0, ios::beg);
-    for (auto offset : timestamp_offsets) {
-        infile.seekg(offset, ios::beg);
-        infile.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
-        fprint.insert(make_pair(block_fingerprint(buffer),
-                                make_pair("timestamp", offset)));
-    }
-    for (auto fp : fprint) {
-
-        cout << std::hex << fp.first << "\t" << std::dec << fp.second.second
-             << "\t" << fp.second.first << "\n";
-    }
-    cout << endl;
+    cout << std::hex << fp.first << "\t" << std::dec << fp.second.second
+         << "\t" << fp.second.first << "\n";
+}
+cout << endl;
 */
 
     return 0;
