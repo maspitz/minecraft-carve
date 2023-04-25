@@ -23,6 +23,7 @@ pkg_check_modules(COM_ERR REQUIRED com_err)
 add_executable(mcarve-pass1
     apps/mcarve-pass1.cpp
     source/pass1config.cpp
+    source/ext2filesystem.cpp
 )
 
 target_link_libraries(mcarve-pass1 ${ZLIB_LIBRARIES} ${E2P_LIBRARIES} ${COM_ERR_LIBRARIES} ${EXT2FS_LIBRARIES})
