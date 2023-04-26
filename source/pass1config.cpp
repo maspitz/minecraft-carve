@@ -35,8 +35,8 @@ mcarve::Pass1Config::Pass1Config(int argc, char *argv[]) {
     app.add_option("--start", start_timestr,
                    "Minimum accepted timestamp (YYYY-mm-dd)");
     app.add_option("--stop", stop_timestr,
-    app.add_flag("-v,--verbose", m_verbose, "Print verbose output");
                    "Maximum accepted timestamp (YYYY-mm-dd)");
+    app.add_flag("-v,--verbose", m_verbose, "Print verbose output");
 
     // can throw CLI::ParseError
     (app).parse((argc), (argv));
