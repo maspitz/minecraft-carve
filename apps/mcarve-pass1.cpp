@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "ext2filesystem.hpp"
 #include "zstr.hpp"
 #include "nbt.hpp"
 #include "pass1config.hpp"
@@ -144,42 +145,22 @@ int main(int argc, char *argv[]) {
     }
 
     Pass1Config &conf = *conf_ptr;
-    ifstream &infile = conf.in_stream();
 
-    infile.seekg(0, ios::end);
-    uint64_t file_size = infile.tellg();
-    if (file_size % BLOCK_SIZE != 0) {
-        cerr << "Warning: image file size is not padded to align with block "
-                "size."
-             << endl;
-    }
-    infile.seekg(0, ios::beg);
+    Ext2Filesystem fs(conf.file_name());
 
     if (conf.verbose()) {
-        cout << "Start Timestamp: " << conf.start_time() << "\n"
-             << "Stop Timestamp:  " << conf.stop_time() << "\n"
-             << "Opened image file " << conf.file_name() << "\n"
-             << "Contains " << file_size / 4096 << " blocks" << endl;
+        cout << "Start Timestamp:\t" << conf.start_time() << "\n"
+             << "Stop Timestamp:\t" << conf.stop_time() << "\n"
+             << "Image file:\t" << conf.file_name() << "\n"
+             << "Blocksize:\t" << fs.blocksize() << endl;
     }
-
-    array<uint32_t, FIELDS_PER_BLOCK> buffer;
 
     map<uint64_t, Block> blocks;
     vector<uint64_t> timestamp_offsets;
     vector<uint64_t> offset_offsets;
     vector<uint64_t> chunk_offsets;
 
-    const size_t BUFFER_SIZE = buffer.size() * sizeof(uint32_t);
-
-    if (!infile) {
-        cerr << "infile-1" << endl;
-    }
-    // FIXME: kludge for the test filesystem which has 1024-byte filesystem
-    // blocks. The extent boundaries in this test filesystem are almost all
-    // aligned by 1024 + 4096 * N.
-    //for (uint64_t offset = 1024; infile && offset < file_size;
-         //offset += BUFFER_SIZE) {
-         for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
+    for (uint64_t offset = 0; offset < file_size; offset += BUFFER_SIZE)
          {
 
         infile.seekg(offset, ios::beg);

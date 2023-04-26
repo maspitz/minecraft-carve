@@ -35,17 +35,11 @@ mcarve::Pass1Config::Pass1Config(int argc, char *argv[]) {
     app.add_option("--start", start_timestr,
                    "Minimum accepted timestamp (YYYY-mm-dd)");
     app.add_option("--stop", stop_timestr,
-                   "Maximum accepted timestamp (YYYY-mm-dd)");
     app.add_flag("-v,--verbose", m_verbose, "Print verbose output");
+                   "Maximum accepted timestamp (YYYY-mm-dd)");
 
     // can throw CLI::ParseError
     (app).parse((argc), (argv));
-
-    m_instream = make_unique<std::ifstream>(m_filename, ios::in | ios::binary);
-
-    if (!*m_instream) {
-        throw std::runtime_error("Could not open file " + m_filename);
-    }
 
     time_t start_time;
     time_t stop_time;
