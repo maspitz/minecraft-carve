@@ -77,7 +77,7 @@ bool is_chunk_header(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
     return true;
 }
 
-enum class Block { Offset, Timestamp, Chunk };
+enum class Block { Offset, Timestamp, ChunkStart, ChunkCont };
 
 using bin1024 = bitset<1024>;
 using bin64 = bitset<64>;
