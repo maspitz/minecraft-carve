@@ -19,13 +19,13 @@
 using namespace std;
 using namespace mcarve;
 
-// bool is_sparse_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
-//     int count_nonzero{0};
-//     for (size_t i = 0; i < FIELDS_PER_BLOCK; ++i) {
-//         count_nonzero += (buffer[i] != 0);
-//     }
-//     return count_nonzero < 10;
-// }
+bool is_sparse_block(const std::vector<unsigned char> &blockdata) {
+    unsigned int count_nonzero{0};
+    for (auto data : blockdata) {
+        count_nonzero += (data != 0);
+    }
+    return count_nonzero < 10;
+}
 
 bool is_timestamp_block(const std::vector<unsigned char> &blockdata,
                         uint32_t min_time, uint32_t max_time) {
