@@ -45,7 +45,39 @@ bool is_timestamp_block(const std::vector<unsigned char> &blockdata,
     return is_timestamp;
 }
 
+// NOTE: perhaps make Blockdata type.  Provide chunk_timestamp, chunk_length,
+// etc. as methods of the type.  Maybe overload methods to provide access via
+// index or (x,z). Blockdata should be initialized only with 4k of uint8_t or
+// unsigned char. However, we also want access to NBT data, which requires
+// multiple blocks to provide.  But this is a good starting point.
 
+// chunk_index() provides the index number of a given (x, z) chunk's data in a
+// region file header block. To use this index, interpret the header block data
+// as an array of uint32_t[1024].
+uint32_t chunk_index(uint32_t x, uint32_t z) {
+    return ((x & 31) + (z & 31) * 32);
+}
+
+uint32_t chunk_timestamp(uint32_t chunk_index,
+                         const std::vector<unsigned char> &blockdata) {
+    return __builtin_bswap32(blockdata[chunk_index]);
+}
+
+// chunk_length() provides the length of the encoded chunk data in 4k sectors.
+uint32_t chunk_length(uint32_t chunk_index,
+                      const std::vector<unsigned char> &blockdata) {
+    return __builtin_bswap32(blockdata[chunk_index]) >> 8 & 0xFFFFFF;
+}
+
+// chunk_length() provides the offset of the encoded chunk data in 4k sectors.
+//
+// The offsets and timestamps tables are located at offsets 0 and 1
+// respectively, so the smallest possible valid chunk data offset is 2.
+uint8_t chunk_offset(uint32_t chunk_index,
+                     const std::vector<unsigned char> &blockdata) {
+    return static_cast<uint8_t>(__builtin_bswap32(blockdata[chunk_index]) &
+                                0xFF);
+}
 
 bool is_offset_block(const std::vector<unsigned char> &blockdata) {
     auto uint32data = reinterpret_cast<const uint32_t *>(blockdata.data());
