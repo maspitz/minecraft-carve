@@ -34,7 +34,7 @@ using namespace mcarve;
 bool is_timestamp_block(const std::vector<unsigned char> &blockdata,
                         uint32_t min_time, uint32_t max_time) {
     bool is_timestamp = false;
-    auto n_fields = blockdata.size() / sizeof(uint32_t);
+    const auto n_fields = blockdata.size() / sizeof(uint32_t);
     auto uint32data = reinterpret_cast<const uint32_t *>(blockdata.data());
     for (size_t i = 0; i < n_fields; ++i) {
         uint32_t timestamp = __builtin_bswap32(uint32data[i]);
