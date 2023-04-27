@@ -19,9 +19,9 @@
 using namespace std;
 using namespace mcarve;
 
-const uint64_t BLOCK_SIZE = 4096;
-constexpr auto FIELD_SIZE = sizeof(uint32_t);
-constexpr auto FIELDS_PER_BLOCK = BLOCK_SIZE / FIELD_SIZE;
+// const uint64_t BLOCK_SIZE = 4096;
+// constexpr auto FIELD_SIZE = sizeof(uint32_t);
+// constexpr auto FIELDS_PER_BLOCK = BLOCK_SIZE / FIELD_SIZE;
 
 // bool is_sparse_block(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {
 //     int count_nonzero{0};
