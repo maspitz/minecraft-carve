@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
              << "Blocksize:\t" << fs.blocksize() << endl;
     }
 
-    map<uint64_t, Block> blocks;
+    map<uint64_t, Sector::Role> blocks;
     vector<uint64_t> timestamp_offsets;
     vector<uint64_t> offset_offsets;
     vector<uint64_t> chunk_offsets;
@@ -220,12 +220,12 @@ int main(int argc, char *argv[]) {
     //             continue;
     //         }
     //         if (is_offset_block(buffer)) {
-    //             blocks[offset] = Block::Offset;
+    //             blocks[offset] = Sector::Role::Offset;
     //         } else if (is_timestamp_block(buffer, conf.start_time(),
     //                                       conf.stop_time())) {
-    //             blocks[offset] = Block::Timestamp;
+    //             blocks[offset] = Sector::Role::Timestamp;
     //         } else if (is_chunk_header(buffer)) {
-    //             blocks[offset] = Block::ChunkStart;
+    //             blocks[offset] = Sector::Role::ChunkStart;
     //         }
     //     }
 
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
     //     // auto zzbuffer = std::make_unique<char[]>(1 << 20);
 
     //     for (auto b : blocks) {
-    //         if (b.second != Block::ChunkStart) {
+    //         if (b.second != Sector::Role::ChunkStart) {
     //             continue;
     //         }
     //         uint64_t loc = b.first;
@@ -310,14 +310,14 @@ int main(int argc, char *argv[]) {
     //         for (auto data_offset = loc + BLOCK_SIZE;
     //              data_offset <= loc + data_length; data_offset += BLOCK_SIZE)
     //              {
-    //             blocks[data_offset] = Block::ChunkCont;
+    //             blocks[data_offset] = Sector::Role::ChunkCont;
     //         }
     //         chunks_read++;
     //     }
-    //     map<Block, std::string> block_char{{Block::Offset, "O"},
-    //                                        {Block::Timestamp, "T"},
-    //                                        {Block::ChunkStart, "c"},
-    //                                        {Block::ChunkCont, "d"}};
+    //     map<Block, std::string> block_char{{Sector::Role::Offset, "O"},
+    //                                        {Sector::Role::Timestamp, "T"},
+    //                                        {Sector::Role::ChunkStart, "c"},
+    //                                        {Sector::Role::ChunkCont, "d"}};
 
     //     if (conf.verbose()) {
 
