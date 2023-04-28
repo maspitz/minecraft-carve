@@ -1,18 +1,9 @@
-#include <array>
-#include <bitset>
-#include <cstdint> // for types uint32_t etc.
-#include <fstream>
-#include <functional>
 #include <iostream>
 #include <map>
-#include <memory>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include <vector>
 
 #include "ext2filesystem.hpp"
-#include "nbt.hpp"
+//#include "nbt.hpp"
 #include "pass1config.hpp"
 #include "zstr.hpp"
 
