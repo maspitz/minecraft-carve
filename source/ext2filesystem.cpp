@@ -49,16 +49,18 @@ bool Ext2Filesystem::block_is_nonzero(blk64_t blk) {
     return false;
 }
 
-std::vector<unsigned char> Ext2Filesystem::read_block(blk64_t blk,
-                                                      unsigned count) {
-    std::vector<unsigned char> data(m_fs->blocksize * count);
-    errcode_t errval;
-    errval = io_channel_read_blk64(m_fs->io, blk, count, &data[0]);
+void Ext2Filesystem::read_block(blk64_t blk, std::vector<unsigned char> &data,
+                                unsigned count) {
+    data = std::vector<unsigned char>(m_fs->blocksize * count);
+    read_block(blk, &data[0], count);
+}
+
+void Ext2Filesystem::read_block(blk64_t blk, void *data, unsigned count) {
+    errcode_t errval = io_channel_read_blk64(m_fs->io, blk, count, data);
     if (errval) {
         com_err("Ext2Filesystem::read_block()", errval, "while reading block");
         throw std::runtime_error("Could not read block");
     }
-    return data;
 }
 
 } // namespace mcarve

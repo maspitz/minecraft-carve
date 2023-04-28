@@ -14,7 +14,9 @@ class Ext2Filesystem {
 
     bool block_is_used(blk64_t blk);
     bool block_is_nonzero(blk64_t blk);
-    std::vector<unsigned char> read_block(blk64_t blk, unsigned count = 1);
+    void read_block(blk64_t blk, std::vector<unsigned char> &data,
+                    unsigned count = 1);
+    void read_block(blk64_t blk, void *data, unsigned count = 1);
     unsigned int blocksize() { return m_fs->blocksize; }
     uint32_t first_data_block() { return m_fs->super->s_first_data_block; }
     blk64_t blocks_count() { return ext2fs_blocks_count(m_fs->super); }
