@@ -1,4 +1,4 @@
-//sector.cpp
+// sector.cpp
 
 #include <algorithm>
 #include <bitset>
@@ -40,7 +40,8 @@ uint32_t Sector::chunk_sector_offset(uint32_t chunk_index) const {
 }
 
 uint8_t Sector::chunk_sector_length(uint32_t chunk_index) const {
-    return static_cast<uint8_t>(__builtin_bswap32(as_uint32()[chunk_index]) & 0xFF);
+    return static_cast<uint8_t>(__builtin_bswap32(as_uint32()[chunk_index]) &
+                                0xFF);
 }
 
 bool Sector::has_offsets() const {
@@ -86,15 +87,61 @@ uint32_t Sector::encoded_chunk_bytelength() const {
     return __builtin_bswap32(as_uint32()[0]);
 }
 
-void Sector::read_sector(mcarve::Ext2Filesystem &fs, blk64_t blk) {
-    if (fs.blocksize() != N_CHUNKS * sizeof(uint32_t)) {
+void Sector::read_sectors(Ext2Filesystem &fs, blk64_t blk, unsigned int n) {
+    if (fs.blocksize() != SECTOR_BYTES) {
         throw std::runtime_error(
             "Filesystem's blocksize does not match region file sector size.");
     }
-    if (m_bytes.size() < N_CHUNKS * sizeof(uint32_t)) {
-        m_bytes = std::vector<uint8_t>(N_CHUNKS * sizeof(uint32_t));
+    if (m_bytes.size() != SECTOR_BYTES * n) {
+        m_bytes = std::vector<uint8_t>(SECTOR_BYTES * n);
     }
-    fs.read_block(blk, m_bytes.data(), 1);
+    fs.read_block(blk, m_bytes.data(), n);
+    m_blocks.clear();
+    for (blk64_t b = blk; b < blk + n; ++b) {
+        m_blocks.push_back(b);
+    }
+}
+
+void Sector::read_sectors(Ext2Filesystem &fs,
+                          const std::vector<blk64_t> &blks) {
+    if (fs.blocksize() != SECTOR_BYTES) {
+        throw std::runtime_error(
+            "Filesystem's blocksize does not match region file sector size.");
+    }
+    if (m_bytes.size() != SECTOR_BYTES * blks.size()) {
+        m_bytes = std::vector<uint8_t>(SECTOR_BYTES * blks.size());
+    }
+    for (int i = 0; i < blks.size(); ++i) {
+        fs.read_block(blks[i], &m_bytes[i * SECTOR_BYTES], 1);
+    }
+    m_blocks = blks;
+}
+
+void Sector::extend_sectors(Ext2Filesystem &fs, blk64_t blk, unsigned int n) {
+    if (fs.blocksize() != SECTOR_BYTES) {
+        throw std::runtime_error(
+            "Filesystem's blocksize does not match region file sector size.");
+    }
+    auto dst_idx = m_bytes.size();
+    m_bytes.insert(m_bytes.end(), SECTOR_BYTES * n, 0);
+    fs.read_block(blk, &m_bytes[dst_idx], n);
+    for (blk64_t b = blk; b < blk + n; ++b) {
+        m_blocks.push_back(b);
+    }
+}
+
+void Sector::extend_sectors(Ext2Filesystem &fs,
+                            const std::vector<blk64_t> &blks) {
+    if (fs.blocksize() != SECTOR_BYTES) {
+        throw std::runtime_error(
+            "Filesystem's blocksize does not match region file sector size.");
+    }
+    auto dst_idx = m_bytes.size();
+    m_bytes.insert(m_bytes.end(), SECTOR_BYTES * blks.size(), 0);
+    for (int i = 0; i < blks.size(); ++i) {
+        fs.read_block(blks[i], &m_bytes[dst_idx + i * SECTOR_BYTES], 1);
+    }
+    m_blocks.insert(m_blocks.end(), blks.begin(), blks.end());
 }
 
 namespace zlib_expected {

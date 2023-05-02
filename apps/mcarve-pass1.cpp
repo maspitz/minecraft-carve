@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         if (fs.block_is_used(blk)) {
             continue;
         }
-        sec.read_sector(fs, blk);
+        sec.read_sectors(fs, blk);
         if (sec.has_timestamps(conf.start_time(), conf.stop_time())) {
             std::cout << blk << ": timestamps\n";
             flag = true;
