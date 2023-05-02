@@ -18,7 +18,7 @@ bool Sector::is_sparse() const {
 
 bool Sector::has_timestamps(uint32_t min_time, uint32_t max_time) const {
     bool has_timestamps = false;
-    for (auto x : m_uints) {
+    for (auto x : as_uint32()) {
         uint32_t timestamp = __builtin_bswap32(x);
         if (timestamp != 0) {
             has_timestamps = true;
@@ -27,19 +27,20 @@ bool Sector::has_timestamps(uint32_t min_time, uint32_t max_time) const {
             }
         }
     }
+
     return has_timestamps;
 }
 
 uint32_t Sector::get_timestamp(uint32_t chunk_index) const {
-    return __builtin_bswap32(m_uints[chunk_index]);
+    return __builtin_bswap32(as_uint32()[chunk_index]);
 }
 
 uint32_t Sector::chunk_sector_offset(uint32_t chunk_index) const {
-    return (__builtin_bswap32(m_uints[chunk_index]) >> 8) & 0xFFFFFF;
+    return (__builtin_bswap32(as_uint32()[chunk_index]) >> 8) & 0xFFFFFF;
 }
 
 uint8_t Sector::chunk_sector_length(uint32_t chunk_index) const {
-    return static_cast<uint8_t>(__builtin_bswap32(m_uints[chunk_index]) & 0xFF);
+    return static_cast<uint8_t>(__builtin_bswap32(as_uint32()[chunk_index]) & 0xFF);
 }
 
 bool Sector::has_offsets() const {
@@ -82,13 +83,16 @@ bool Sector::has_offsets() const {
 }
 
 uint32_t Sector::encoded_chunk_bytelength() const {
-    return __builtin_bswap32(m_uints[0]);
+    return __builtin_bswap32(as_uint32()[0]);
 }
 
 void Sector::read_sector(mcarve::Ext2Filesystem &fs, blk64_t blk) {
     if (fs.blocksize() != N_CHUNKS * sizeof(uint32_t)) {
         throw std::runtime_error(
             "Filesystem's blocksize does not match region file sector size.");
+    }
+    if (m_bytes.size() < N_CHUNKS * sizeof(uint32_t)) {
+        m_bytes = std::vector<uint8_t>(N_CHUNKS * sizeof(uint32_t));
     }
     fs.read_block(blk, m_bytes.data(), 1);
 }
@@ -111,7 +115,7 @@ namespace zlib_expected {
 } // namespace zlib_expected
 
 bool Sector::has_encoded_chunk() const {
-    const uint32_t data_length = __builtin_bswap32(m_uints[0]);
+    const uint32_t data_length = __builtin_bswap32(as_uint32()[0]);
     constexpr uint32_t MAX_DATA_LENGTH =
         (1 << 20); // Maximum possible encoded chunk length
     if (data_length > MAX_DATA_LENGTH) {
@@ -120,7 +124,7 @@ bool Sector::has_encoded_chunk() const {
 
     // Upper byte encodes compression type, which should be ZLIB.
     // If compression type is ZLIB, then next two bytes encode CMF and FLG.
-    const uint32_t comp_cmf_flg = __builtin_bswap32(m_uints[1]);
+    const uint32_t comp_cmf_flg = __builtin_bswap32(as_uint32()[1]);
     if ((comp_cmf_flg & 0xFFFFFF00) != zlib_expected::ZLIB_CMF_FLG) {
         return false;
     }

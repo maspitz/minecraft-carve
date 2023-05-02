@@ -3,7 +3,9 @@
 #ifndef SECTOR_H_
 #define SECTOR_H_
 
-#include <array>
+#include <vector>
+#include <span>
+#include <bit>
 #include <cstdint>
 #include <ext2fs/ext2fs.h>
 
@@ -15,9 +17,7 @@ class Sector {
   public:
     static constexpr int N_CHUNKS = 1024;
 
-    Sector()
-        : m_uints(reinterpret_cast<std::array<uint32_t, N_CHUNKS> &>(m_bytes)) {
-    }
+        Sector() { }
     bool is_sparse() const;
     bool has_timestamps(uint32_t min_time, uint32_t max_time) const;
     bool has_offsets() const;
@@ -32,8 +32,11 @@ class Sector {
     void read_sector(Ext2Filesystem &fs, blk64_t blk);
 
   private:
-    std::array<uint8_t, N_CHUNKS * sizeof(uint32_t)> m_bytes;
-    std::array<uint32_t, N_CHUNKS> &m_uints;
+    std::span<const uint32_t> as_uint32() const {
+        return std::span<const uint32_t>( reinterpret_cast<const uint32_t*>(m_bytes.data()),
+                                    m_bytes.size() / sizeof(uint32_t));
+    }
+    std::vector<uint8_t> m_bytes;
 };
 } // namespace mcarve
 #endif // SECTOR_H_
