@@ -14,7 +14,6 @@ namespace mcarve {
 class Sector {
   public:
     static constexpr int N_CHUNKS = 1024;
-    enum class Role { Offset, Timestamp, ChunkStart, ChunkCont };
 
     Sector()
         : m_uints(reinterpret_cast<std::array<uint32_t, N_CHUNKS> &>(m_bytes)) {

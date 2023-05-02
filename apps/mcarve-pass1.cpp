@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
 
     Sector sec;
 
-    map<uint64_t, Sector::Role> blocks;
     vector<uint64_t> timestamp_offsets;
     vector<uint64_t> offset_offsets;
     vector<uint64_t> chunk_offsets;
