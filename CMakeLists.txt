@@ -21,6 +21,12 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(EXT2FS REQUIRED ext2fs)
 pkg_check_modules(COM_ERR REQUIRED com_err)
 
+add_library(libnbt source/nbt.cpp)
+target_include_directories(libnbt PUBLIC include /usr/include)
+
+add_library(libminiz source/miniz.cpp)
+target_include_directories(libminiz PUBLIC include /usr/include)
+
 add_executable(mcarve-pass1
     apps/mcarve-pass1.cpp
     source/pass1config.cpp
@@ -28,5 +34,5 @@ add_executable(mcarve-pass1
     source/sector.cpp
 )
 
-target_link_libraries(mcarve-pass1 ${ZLIB_LIBRARIES} ${E2P_LIBRARIES} ${COM_ERR_LIBRARIES} ${EXT2FS_LIBRARIES})
+target_link_libraries(mcarve-pass1 ${ZLIB_LIBRARIES} ${E2P_LIBRARIES} ${COM_ERR_LIBRARIES} ${EXT2FS_LIBRARIES} libminiz libnbt)
 target_include_directories(mcarve-pass1 PRIVATE include ${E2P_INCLUDE_DIRS} ${EXT2FS_INCLUDE_DIRS})
