@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <bitset>
 #include <map>
+#include <span>
 #include <stdexcept>
+#include <zlib.h>
 
 #include "sector.hpp"
 
@@ -181,6 +183,65 @@ bool Sector::has_encoded_chunk() const {
 
 using bin1024 = std::bitset<1024>;
 using bin64 = std::bitset<64>;
+
+std::vector<uint8_t> uncompress_data(std::span<const uint8_t> compressed_data) {
+    std::vector<uint8_t> uncompressed_data;
+
+    // Set up the zlib stream
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+    stream.avail_in = static_cast<uInt>(compressed_data.size());
+    stream.next_in = const_cast<Bytef *>(compressed_data.data());
+
+    // Initialize the decompression state
+    if (inflateInit(&stream) != Z_OK) {
+        throw std::runtime_error(
+            "Failed to initialize zlib stream for decompression");
+    }
+
+    // Decompress the data
+    uint8_t buffer[1024];
+    while (true) {
+        stream.avail_out = sizeof(buffer);
+        stream.next_out = buffer;
+
+        int result = inflate(&stream, Z_NO_FLUSH);
+        if (result == Z_STREAM_END) {
+            // Decompression finished
+            uncompressed_data.insert(uncompressed_data.end(), buffer,
+                                     buffer +
+                                         (sizeof(buffer) - stream.avail_out));
+            break;
+        } else if (result != Z_OK) {
+            // Decompression failed
+            inflateEnd(&stream);
+            throw std::runtime_error("Failed to decompress data using zlib");
+        }
+
+        uncompressed_data.insert(uncompressed_data.end(), buffer,
+                                 buffer + sizeof(buffer) - stream.avail_out);
+    }
+
+    // Clean up the zlib stream
+    inflateEnd(&stream);
+
+    return uncompressed_data;
+}
+
+std::vector<uint8_t> Sector::get_chunk_nbt() const {
+    if (!has_encoded_chunk()) {
+        throw std::runtime_error("get_chunk_nbt: this is not a chunk sector");
+    }
+    auto chunk_len = encoded_chunk_bytelength();
+    if (m_bytes.size() < 5 + chunk_len) {
+        throw std::runtime_error(
+            "get_chunk_nbt: insufficient chunk data was read");
+    }
+    auto chunk_data{std::span{m_bytes}.subspan(5, 5 + chunk_len)};
+    return uncompress_data(chunk_data);
+}
 
 // unsigned long long
 // block_fingerprint(const array<uint32_t, FIELDS_PER_BLOCK> &buffer) {

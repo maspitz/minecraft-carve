@@ -38,6 +38,8 @@ class Sector {
     void extend_sectors(Ext2Filesystem &fs, blk64_t blk, unsigned int n = 1);
     void extend_sectors(Ext2Filesystem &fs, const std::vector<blk64_t> &blks);
 
+    std::vector<uint8_t> get_chunk_nbt() const;
+
   private:
     std::span<const uint32_t> as_uint32() const {
         return std::span<const uint32_t>(
