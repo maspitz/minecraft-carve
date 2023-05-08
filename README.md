@@ -108,3 +108,16 @@ There should be other information in the chunks that can be used.
 
 ## Further Requirements
 The .mca files may not be useful without the matching level.dat, most importantly because this contains the world's seed.  Recovering deleted level.dat is not too difficult, but we also need to match it up.  level.dat records both the in-game time in ticks, and LastPlayed, the clock time.  These could be matched up with the chunk's LastUpdate (time in ticks) and with the Anvil timestamps.
+
+## Refinement of Strategy
+
+Preliminary review of the fileystem that I'm interested in shows that some region files have quite fragmented.  For example, one has the following 18 extents:
+(ETB0):572040, (0-22):600757-600779, (23-49):600796-600822, (50-137):600824-600911, (138-146):600404-600412, (147-154):592374-592381, (155-162):594452-594459, (163-170):594476-594483, (171-181):601078601088, (182-189):594548-594555, (190-197):594596-594603, (198-205):594670-594677, (206-213):595662-595669, (214-224):601106-601116, (225-256):601140-601171, (257-264):596284-596291, (265-284):601216-601235, (285-346):601246-601307, (347-1273):497313-498239.  There may sometimes be only a few chunks per extent.  Also there are probably about 200-400 region files.  This makes it challenging to piece the region files together.  Three strategies will be of great importance:
+
+### Region grouping
+Each chunk identifies its region quite directly.
+
+### Chunk coordinate ordering
+The region file header shows which (x,z) chunk follows another as well as its sector length.  An ordering of three chunks would only match with another by random chance with about 1e-6 probability.  We are talking about roughly 1e4 fragments to be reassembled, so 
+
+### Seed determination from chunk
