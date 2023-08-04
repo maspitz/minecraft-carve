@@ -1,0 +1,3 @@
+[submodule "nbtview"]
+	path = nbtview
+	url = https://github.com/maspitz/nbtview
