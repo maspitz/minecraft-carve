@@ -1,4 +1,12 @@
-// sector.hpp
+/**
+ * @file Sector.hpp
+ * @brief Classifies candidate sector types in Minecraft file carving
+ * @author Michael Spitznagel
+ * @copyright Copyright 2023 Michael Spitznagel. Released under the GNU GPL 3
+ * License.
+ *
+ * https://github.com/maspitz/minecraft-carve
+ */
 
 #ifndef SECTOR_H_
 #define SECTOR_H_
