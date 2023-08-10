@@ -36,36 +36,49 @@ int main(int argc, char *argv[]) {
              << "Blocksize:\t" << fs.blocksize() << endl;
     }
 
-    Sector sec;
-
     vector<uint64_t> timestamp_offsets;
     vector<uint64_t> offset_offsets;
     vector<uint64_t> chunk_offsets;
 
-    bool flag = false;
     auto max_blk = fs.blocks_count();
     if (max_blk > 400000) {
         max_blk = 400000;
     }
+    vector<uint8_t> sector_buffer(4096);
+    vector<uint8_t> tiny_buffer(16);
+    int chunk_header_count = 0;
     for (blk64_t blk = fs.first_data_block(); blk < max_blk; ++blk) {
 
         if (fs.block_is_used(blk)) {
             continue;
         }
-        sec.read_sectors(fs, blk);
-        if (sec.has_timestamps(conf.start_time(), conf.stop_time())) {
+        fs.read_block(blk, sector_buffer.data(), 1);
+        if (has_timestamps(sector_buffer, conf.start_time(),
+                           conf.stop_time())) {
+            if (chunk_header_count > 0) {
+                std::cout << "[" << chunk_header_count << "]\n";
+                chunk_header_count = 0;
+            }
             std::cout << blk << ": timestamps\n";
-            flag = true;
         }
-        if (sec.has_offsets()) {
+        if (has_offsets(sector_buffer)) {
+            if (chunk_header_count > 0) {
+                std::cout << "[" << chunk_header_count << "]\n";
+                chunk_header_count = 0;
+            }
             std::cout << blk << ": offsets\n";
-            flag = true;
         }
 
-        if (flag && sec.has_encoded_chunk()) {
-            std::cout << blk << ": chunk header(s...)\n";
-            flag = false;
+        if (has_encoded_chunk(sector_buffer)) {
+            if (chunk_header_count == 0) {
+                std::cout << blk << ": chunk headers: ";
+            }
+            chunk_header_count++;
         }
+    }
+    if (chunk_header_count > 0) {
+        std::cout << "[" << chunk_header_count << "]\n";
+        chunk_header_count = 0;
     }
 
     return 0;
