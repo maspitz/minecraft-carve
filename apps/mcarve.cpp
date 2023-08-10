@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "ext2filesystem.hpp"
-#include "pass1config.hpp"
+#include "mcarve-config.hpp"
 #include "sector.hpp"
 
 using namespace std;

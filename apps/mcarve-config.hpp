@@ -1,5 +1,5 @@
-#ifndef PASS1CONFIG_H_
-#define PASS1CONFIG_H_
+#ifndef MCARVE_CONFIG_H_
+#define MCARVE_CONFIG_H_
 
 #include <cstdint>
 #include <fstream>
@@ -24,4 +24,4 @@ class Pass1Config {
 
 } // namespace mcarve
 
-#endif // PASS1CONFIG_H_
+#endif // MCARVE_CONFIG_H_

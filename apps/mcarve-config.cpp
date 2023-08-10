@@ -1,8 +1,9 @@
-#include "pass1config.hpp"
-
-#include "CLI11.hpp"
 #include <ctime>
 #include <iostream>
+
+#include "CLI11.hpp"
+
+#include "mcarve-config.hpp"
 
 using namespace mcarve;
 using namespace std;
