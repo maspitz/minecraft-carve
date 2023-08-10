@@ -3,10 +3,8 @@
 #include <vector>
 
 #include "ext2filesystem.hpp"
-//#include "nbt.hpp"
 #include "pass1config.hpp"
 #include "sector.hpp"
-#include "zstr.hpp"
 
 using namespace std;
 using namespace mcarve;
