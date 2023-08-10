@@ -29,11 +29,11 @@ Ext2Filesystem::Ext2Filesystem(const std::string &name) {
 
 Ext2Filesystem::~Ext2Filesystem() { ext2fs_close(m_fs); }
 
-bool Ext2Filesystem::block_is_used(blk64_t blk) {
+bool Ext2Filesystem::block_is_used(uint64_t blk) {
     return ext2fs_test_block_bitmap2(m_fs->block_map, blk);
 }
 
-bool Ext2Filesystem::block_is_nonzero(blk64_t blk) {
+bool Ext2Filesystem::block_is_nonzero(uint64_t blk) {
     unsigned char buf[EXT2_MAX_BLOCK_SIZE];
     errcode_t errval;
     errval = io_channel_read_blk64(m_fs->io, blk, 1, buf);
@@ -49,13 +49,13 @@ bool Ext2Filesystem::block_is_nonzero(blk64_t blk) {
     return false;
 }
 
-void Ext2Filesystem::read_block(blk64_t blk, std::vector<unsigned char> &data,
+void Ext2Filesystem::read_block(uint64_t blk, std::vector<unsigned char> &data,
                                 unsigned count) {
     data = std::vector<unsigned char>(m_fs->blocksize * count);
     read_block(blk, &data[0], count);
 }
 
-void Ext2Filesystem::read_block(blk64_t blk, void *data, unsigned count) {
+void Ext2Filesystem::read_block(uint64_t blk, void *data, unsigned count) {
     errcode_t errval = io_channel_read_blk64(m_fs->io, blk, count, data);
     if (errval) {
         com_err("Ext2Filesystem::read_block()", errval, "while reading block");
