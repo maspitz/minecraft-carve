@@ -1,58 +1,93 @@
+#include <cstdint>
+#include <ctime>
+#include <fstream>
 #include <iostream>
-#include <map>
 #include <vector>
 
+#include "CLI11.hpp"
+
 #include "ext2filesystem.hpp"
-#include "mcarve-config.hpp"
 #include "sector.hpp"
 
-using namespace std;
 using namespace mcarve;
 
-uint32_t chunk_index(uint32_t x, uint32_t z) {
-    return ((x & 31) + (z & 31) * 32);
+time_t parse_time(const std::string &timestr) {
+    struct tm tm = {};
+    char *ptr = strptime(timestr.c_str(), "%Y-%m-%d", &tm);
+    if (ptr == nullptr || *ptr != '\0') {
+        throw std::runtime_error("Failed to parse timestamp: " + timestr);
+    }
+    return mktime(&tm);
+}
+
+time_t current_time() {
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    return mktime(&tm);
 }
 
 int main(int argc, char *argv[]) {
 
-    unique_ptr<Pass1Config> conf_ptr;
-    try {
-        conf_ptr = make_unique<Pass1Config>(argc, argv);
-    } catch (exception &e) {
-        cerr << argv[0] << ": " << e.what() << "\n";
-        return 1;
+    CLI::App app{"Scan filesystem image for minecraft data"};
+
+    struct {
+        std::string filename;
+        uint32_t start_time;
+        uint32_t stop_time;
+        bool verbose;
+    } config;
+
+    config.verbose = false;
+    app.add_option("-f,--file,file", config.filename, "Image file to be carved")
+        ->required()
+        ->check(CLI::ExistingFile);
+
+    std::string start_timestr("2008-01-01");
+    app.add_option("--start", start_timestr,
+                   "Minimum accepted timestamp (YYYY-mm-dd)")
+        ->default_str("2008-01-01");
+
+    std::string stop_timestr = "current_time";
+    app.add_option("--stop", stop_timestr,
+                   "Maximum accepted timestamp (YYYY-mm-dd)")
+        ->default_str("current_time");
+    app.add_flag("-v,--verbose", config.verbose, "Print verbose output");
+
+    time_t start_time;
+    time_t stop_time;
+
+    start_time = parse_time(start_timestr);
+    if (stop_timestr == "current_time") {
+        stop_time = current_time();
+    } else {
+        stop_time = parse_time(stop_timestr);
     }
 
-    Pass1Config &conf = *conf_ptr;
+    config.start_time = start_time;
+    config.stop_time = stop_time;
 
-    Ext2Filesystem fs(conf.file_name());
+    CLI11_PARSE(app, argc, argv);
 
-    if (conf.verbose()) {
-        cout << "Start Timestamp:\t" << conf.start_time() << "\n"
-             << "Stop Timestamp:\t" << conf.stop_time() << "\n"
-             << "Image file:\t" << conf.file_name() << "\n"
-             << "Blocksize:\t" << fs.blocksize() << endl;
-    }
+    Ext2Filesystem fs(config.filename);
 
-    vector<uint64_t> timestamp_offsets;
-    vector<uint64_t> offset_offsets;
-    vector<uint64_t> chunk_offsets;
+    std::vector<uint64_t> timestamp_offsets;
+    std::vector<uint64_t> offset_offsets;
+    std::vector<uint64_t> chunk_offsets;
 
     auto max_blk = fs.blocks_count();
     if (max_blk > 400000) {
         max_blk = 400000;
     }
-    vector<uint8_t> sector_buffer(4096);
-    vector<uint8_t> tiny_buffer(16);
+    std::vector<uint8_t> sector_buffer(4096);
+    std::vector<uint8_t> tiny_buffer(16);
     int chunk_header_count = 0;
     for (blk64_t blk = fs.first_data_block(); blk < max_blk; ++blk) {
-
         if (fs.block_is_used(blk)) {
             continue;
         }
         fs.read_block(blk, sector_buffer.data(), 1);
-        if (has_timestamps(sector_buffer, conf.start_time(),
-                           conf.stop_time())) {
+        if (has_timestamps(sector_buffer, config.start_time,
+                           config.stop_time)) {
             if (chunk_header_count > 0) {
                 std::cout << "[" << chunk_header_count << "]\n";
                 chunk_header_count = 0;

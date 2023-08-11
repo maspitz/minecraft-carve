@@ -1,6 +1,5 @@
 add_executable(mcarve
     mcarve.cpp
-    mcarve-config.cpp
 )
 
 target_link_libraries(mcarve minecraft-carve)
