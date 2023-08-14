@@ -1,8 +1,22 @@
-#include "ext2filesystem.hpp"
-#include <ext2fs/ext2fs.h>
+#include <fstream>
 #include <stdexcept>
 
+#include <ext2fs/ext2fs.h>
+
+#include "ext2filesystem.hpp"
+
 namespace mcarve {
+
+bool IdentifyExt2FS(const std::string &filename) {
+    unsigned char buffer[2];
+    std::ifstream file(filename);
+    if (!file.is_open() || !file.seekg(1080, std::ios::beg) ||
+        !file.read(reinterpret_cast<char *>(buffer), 2)) {
+        return false;
+    }
+
+    return buffer[0] == 0x53 && buffer[1] == 0xef;
+}
 
 Ext2Filesystem::Ext2Filesystem(const std::string &name) {
     int flags = 0;      // open filesystem for reading only

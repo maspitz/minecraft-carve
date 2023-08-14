@@ -2,11 +2,14 @@
 #define EXT2FILESYSTEM_H_
 
 #include <cstdint>
-#include <ext2fs/ext2fs.h>
 #include <string>
 #include <vector>
 
+#include <ext2fs/ext2fs.h>
+
 namespace mcarve {
+
+bool IdentifyExt2FS(const std::string &filename);
 
 class Ext2Filesystem {
   public:
