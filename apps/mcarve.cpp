@@ -9,6 +9,8 @@
 #include "ext2filesystem.hpp"
 #include "sector.hpp"
 
+#include "BlockReader.hpp"
+
 using namespace mcarve;
 
 time_t parse_time(const std::string &timestr) {
@@ -68,24 +70,29 @@ int main(int argc, char *argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    Ext2Filesystem fs(config.filename);
+    std::unique_ptr<BlockReader> reader;
+    if (IdentifyExt2FS(config.filename)) {
+        reader = std::make_unique<Ext2BlockReader>(config.filename);
+    } else {
+        reader = std::make_unique<FileBlockReader>(config.filename);
+    }
 
     std::vector<uint64_t> timestamp_offsets;
     std::vector<uint64_t> offset_offsets;
     std::vector<uint64_t> chunk_offsets;
 
-    auto max_blk = fs.blocks_count();
+    auto max_blk = reader->blocks_count();
     if (max_blk > 400000) {
         max_blk = 400000;
     }
-    std::vector<uint8_t> sector_buffer(4096);
-    std::vector<uint8_t> tiny_buffer(16);
+    BlockBuffer sector_buffer;
+
     int chunk_header_count = 0;
-    for (blk64_t blk = fs.first_data_block(); blk < max_blk; ++blk) {
-        if (fs.block_is_used(blk)) {
+    for (blk64_t blk = reader->first_blknum(); blk < max_blk; ++blk) {
+        if (reader->is_allocated(blk)) {
             continue;
         }
-        fs.read_block(blk, sector_buffer.data(), 1);
+        reader->read_block(blk, sector_buffer);
         if (has_timestamps(sector_buffer, config.start_time,
                            config.stop_time)) {
             if (chunk_header_count > 0) {
