@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         bool verbose;
     } conf;
 
-    app.add_option("-i,--input", conf.input, "Ext2/3/4 filesystem image")
+    app.add_option("-i,--input,input", conf.input, "Ext2/3/4 filesystem image")
         ->required()
         ->check(CLI::ExistingFile);
     app.add_option("-o,--output", conf.output, "Unused block data output");
