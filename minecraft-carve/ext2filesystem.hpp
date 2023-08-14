@@ -25,8 +25,6 @@ class Ext2Filesystem {
 
   private:
     ext2_filsys m_fs;
-
-    unsigned char m_buf[EXT2_MAX_BLOCK_SIZE];
 };
 
 } // namespace mcarve
