@@ -14,7 +14,6 @@ class Ext2Filesystem {
     ~Ext2Filesystem();
 
     bool block_is_used(uint64_t blk);
-    bool block_is_nonzero(uint64_t blk);
     void read_block(uint64_t blk, std::vector<unsigned char> &data,
                     unsigned count = 1);
     void read_block(uint64_t blk, void *data, unsigned count = 1);

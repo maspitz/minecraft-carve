@@ -33,22 +33,6 @@ bool Ext2Filesystem::block_is_used(uint64_t blk) {
     return ext2fs_test_block_bitmap2(m_fs->block_map, blk);
 }
 
-bool Ext2Filesystem::block_is_nonzero(uint64_t blk) {
-    unsigned char buf[EXT2_MAX_BLOCK_SIZE];
-    errcode_t errval;
-    errval = io_channel_read_blk64(m_fs->io, blk, 1, buf);
-    if (errval) {
-        com_err("block is nonzero()", errval, "while reading block");
-        throw std::runtime_error("Could not read block");
-    }
-    for (int i = 0; i < EXT2_MAX_BLOCK_SIZE; ++i) {
-        if (buf[i] != 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void Ext2Filesystem::read_block(uint64_t blk, std::vector<unsigned char> &data,
                                 unsigned count) {
     data = std::vector<unsigned char>(m_fs->blocksize * count);
