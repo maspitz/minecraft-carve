@@ -12,22 +12,22 @@
 #define SECTOR_H_
 
 #include <cstdint>
-#include <vector>
+#include <span>
 
 namespace mcarve {
 
 //! Tests if a byte buffer has less than 10 nonzero 32-bit words.
-bool is_mostly_zero(const std::vector<uint8_t> &buffer);
+bool is_mostly_zero(const std::span<unsigned char> buffer);
 
 //! Tests if a byte buffer could be a big-endian 32-bit timestamp table.
-bool has_timestamps(const std::vector<uint8_t> &buffer, uint32_t min_time,
+bool has_timestamps(const std::span<unsigned char> buffer, uint32_t min_time,
                     uint32_t max_time);
 
 //! Tests if a byte buffer could be a sector offset table.
-bool has_offsets(const std::vector<uint8_t> &buffer);
+bool has_offsets(const std::span<unsigned char> buffer);
 
 //! Tests if a byte buffer could be the beginning of an encoded chunk.
-bool has_encoded_chunk(const std::vector<uint8_t> &buffer);
+bool has_encoded_chunk(const std::span<unsigned char> buffer);
 
 } // namespace mcarve
 #endif // SECTOR_H_

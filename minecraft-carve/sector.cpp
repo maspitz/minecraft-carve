@@ -9,7 +9,7 @@
 
 namespace mcarve {
 
-bool is_mostly_zero(const std::vector<uint8_t> &buffer) {
+bool is_mostly_zero(const std::span<unsigned char> buffer) {
     std::span<const uint32_t> buf_u32(
         reinterpret_cast<const uint32_t *>(buffer.data()),
         buffer.size() / sizeof(uint32_t));
@@ -19,7 +19,7 @@ bool is_mostly_zero(const std::vector<uint8_t> &buffer) {
     return nonzero_count < threshold;
 }
 
-bool has_timestamps(const std::vector<uint8_t> &buffer, uint32_t min_time,
+bool has_timestamps(const std::span<unsigned char> buffer, uint32_t min_time,
                     uint32_t max_time) {
     uint32_t bits(0);
     std::span<const uint32_t> buf_u32(
@@ -35,7 +35,7 @@ bool has_timestamps(const std::vector<uint8_t> &buffer, uint32_t min_time,
     return bits != 0;
 }
 
-bool has_offsets(const std::vector<uint8_t> &buffer) {
+bool has_offsets(const std::span<unsigned char> buffer) {
     std::span<const uint32_t> buf_u32(
         reinterpret_cast<const uint32_t *>(buffer.data()),
         buffer.size() / sizeof(uint32_t));
@@ -82,7 +82,7 @@ bool has_offsets(const std::vector<uint8_t> &buffer) {
     return true;
 }
 
-bool has_encoded_chunk(const std::vector<uint8_t> &buffer) {
+bool has_encoded_chunk(const std::span<unsigned char> buffer) {
     if (buffer.size() < 8) {
         return false;
     }
