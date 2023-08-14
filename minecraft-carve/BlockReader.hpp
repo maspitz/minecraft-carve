@@ -18,18 +18,26 @@ namespace mcarve {
 const int BLOCKSIZE = 4096;
 using BlockBuffer = std::array<unsigned char, BLOCKSIZE>;
 
-//! Abstract base class providing interface for reading 4k data blocks
+//! Abstract base class providing interface for reading 4kB data blocks.
 class BlockReader {
   public:
     virtual ~BlockReader() = default;
 
+    //! Reads the block of the given index into a provided buffer.
     virtual void read_block(uint64_t blknum, BlockBuffer &buf) = 0;
+
+    //! Returns the first valid block index.
     virtual uint64_t first_blknum() const = 0;
+
+    //! Returns the total number of blocks.
     virtual uint64_t blocks_count() const = 0;
+
+    //! In the context of filesystem data, indicates whether a block is marked
+    //! as being used Otherwise, returns false.
     virtual bool is_allocated(uint64_t blknum) { return false; }
 };
 
-//! Reads 4k data blocks from an ext2 filesystem
+//! Reader of 4kB data blocks from an ext2 filesystem.
 class Ext2BlockReader : public BlockReader {
   public:
     Ext2BlockReader(const std::string &filename) : e2fs(filename) {
@@ -55,7 +63,7 @@ class Ext2BlockReader : public BlockReader {
     Ext2Filesystem e2fs;
 };
 
-//! Reads 4k data blocks from any old file
+//! Reads 4k data blocks from any old file.
 class FileBlockReader : public BlockReader {
   private:
     std::ifstream file;
@@ -88,7 +96,7 @@ class FileBlockReader : public BlockReader {
     uint64_t blocks_count() const override { return totalBlocks; }
 };
 
-//! Reads 4k data blocks from any old file using memory mapped reads
+//! Reads 4k data blocks from any old file using memory mapped reads.
 class MmapBlockReader : public BlockReader {
   private:
     int fd;
