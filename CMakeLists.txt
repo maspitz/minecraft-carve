@@ -13,4 +13,5 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(minecraft-carve)
+add_subdirectory(nbtview)
 add_subdirectory(apps)
