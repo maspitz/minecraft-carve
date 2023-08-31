@@ -49,8 +49,11 @@ bool Ext2Filesystem::block_is_used(uint64_t blk) const {
 
 void Ext2Filesystem::read_block(uint64_t blk, std::vector<unsigned char> &data,
                                 unsigned count) const {
-    data = std::vector<unsigned char>(m_fs->blocksize * count);
-    read_block(blk, &data[0], count);
+    if (data.size() != count * m_fs->blocksize) {
+        throw std::runtime_error(
+            "Incorrect buffer size in Ext2Filesystem::read_block");
+    }
+    read_block(blk, data.data(), count);
 }
 
 void Ext2Filesystem::read_block(uint64_t blk, void *data,
